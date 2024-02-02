@@ -1,0 +1,200 @@
+<!-- public/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WebSocket Chat</title>
+  <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+     #bottomContainer {
+    position: fixed;
+    bottom: 0;
+    width: 100%;
+    background-color: #ffffff;
+    padding: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+    .message-container {
+      display: flex;
+      /* justify-content: space-between; */
+      margin-bottom: 8px;
+    }
+
+    .other-user-message {
+      background-color: #e5e5ea;
+      padding: 8px;
+      border-radius: 8px;
+      align-self: flex-start;
+    }
+
+    .my-message {
+      background-color: #4caf50;
+      color: #fff;
+      padding: 8px;
+      border-radius: 8px;
+      align-self: flex-end;
+      text-align: right;
+    }
+  </style>
+</head>
+<body class="font-sans bg-gray-100">
+
+  <div class="container mx-auto p-4">
+    <!-- Input field for setting the username -->
+    <input type="text" id="usernameInput" class="border border-gray-300 p-2 rounded" placeholder="Enter your name...">
+    <button id="usernameButton" onclick="setUsername()" class="bg-green-500 text-white p-2 rounded ml-2">Set Username</button>
+  </div>
+
+  <div id="chat" class="container mx-auto my-8 p-4 bg-white rounded shadow-lg" style="display:none;">
+    <!-- Chat messages will be displayed here -->
+  </div>
+      <!-- Volume control seek bar -->
+<form onsubmit="sendMessage()">
+  <div id="bottomContainer" class="container mx-auto p-4 items-center" style="display:none;">
+    <!-- Microphone icon for mute/unmute -->
+    <img id="microphoneIcon" src="mute-icon.png" alt="Microphone" 
+    class="w-10" 
+    onclick="toggleMute()"
+      style="cursor: pointer; display: block;">
+    <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1" onchange="changeVolume()">
+
+    <input type="text" id="messageInput" class="border border-gray-300 p-2 rounded w-3/4"
+      placeholder="Type your message...">
+    <button onclick="" type="submit" class="bg-blue-500 text-white p-2 rounded ml-2">Send</button>
+
+  </div>
+</form>
+  <script>
+    const socket = new WebSocket('ws://localhost:3000');
+    let username = '';
+    let isMuted= true;
+    let mediaRecorder;
+    function setUsername() {
+      const usernameInput = document.getElementById('usernameInput');
+      username = usernameInput.value;
+
+      // Display the chat interface and hide the username setting interface
+      document.getElementById('usernameInput').style.display = 'none';
+      document.getElementById('chat').style.display = 'block';
+      document.getElementById('messageInput').style.display = 'block';
+      document.getElementById('bottomContainer').style.display = 'flex';
+      document.getElementById('usernameButton').style.display = 'none';
+
+    //   usernameButton
+
+      // Send the username to the server
+      socket.send(username);
+
+      // Focus on the message input field
+      document.getElementById('messageInput').focus();
+    }
+
+    socket.onmessage = (event) => {
+      const chatDiv = document.getElementById('chat');
+
+      if (!username) {
+        // If the server sends a message before the username is set, display it in the username setting interface
+        document.getElementById('usernameInput').value += event.data;
+      } 
+      else {
+        // Display chat messages with usernames
+        // chatDiv.innerHTML += `<p>${event.data}</p>`;
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('message-container');
+
+        const message = document.createElement('p');
+        message.textContent = event.data;
+        if (event.data.startsWith(username + ':')) {
+        // const messageContainer = document.createElement('div');
+        messageContainer.classList.add('justify-end');
+        message.classList.add('my-message');
+        message.classList.add('w-max');
+        } else {
+          messageContainer.classList.add('other-user-message', 'w-max');
+        }
+        messageContainer.appendChild(message);
+        chatDiv.appendChild(messageContainer);
+      }
+    };
+
+    function sendMessage(e) {
+        event.preventDefault()
+      const input = document.getElementById('messageInput');
+      const message = input.value;
+
+      // Send the message along with the username
+      socket.send(message);
+      input.value = '';
+    }
+
+    var audio 
+  // Voice call functionality (using WebRTC)
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then((stream) => {
+      audio = document.createElement('audio');
+      audio.srcObject = stream;
+      // audio.play();
+
+      mediaRecorder = new MediaRecorder(stream);
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const voiceData = reader.result;
+            socket.send(voiceData);
+          };
+          reader.readAsArrayBuffer(event.data);
+        }
+      };
+
+      // Start recording when the user starts speaking
+      // mediaRecorder.start();
+
+      // Stop recording when the user stops speaking
+      mediaRecorder.onstop = () => {
+        socket.send('Voice call ended.');
+      };
+    })
+    .catch((error) => {
+      console.error('Error accessing microphone:', error);
+    });
+
+    function toggleMute() {
+    //  audio = document.getElementById('audioElement'); // Adjust this based on your audio element
+    isMuted = !isMuted; // Toggle the mute state
+    console.log("{isMuted}",  isMuted ? 'mute-icon.png' : 'unmute-icon.png');
+    const microphoneIcon = document.getElementById('microphoneIcon');
+    microphoneIcon.src = isMuted ? 'mute-icon.png' : 'unmute-icon.png';
+    // Mute/unmute the audio
+    audio.muted = isMuted;
+    const volumeControl = document.getElementById('volumeControl');
+    volumeControl.value= isMuted ? 0 : 90;
+    // Update the microphone icon based on the mute stat
+
+    if (isMuted) {
+      audio.pause();
+            // Stop recording when the user stops speaking
+      //       mediaRecorder.onstop = () => {
+      //   socket.send('Voice call ended.');
+      // };
+    } else {
+      // Start recording when the user starts speaking
+      audio.play();
+    }
+
+  }
+    function changeVolume() {
+      const volumeControl = document.getElementById('volumeControl');
+      const volumeValue = volumeControl.value;
+
+      // Implement logic to change the volume based on the volumeValue
+      // For example, you can adjust the volume of an audio element if you have one.
+      audio.volume = volumeValue;
+    }
+  </script>
+</body>
+</html>
