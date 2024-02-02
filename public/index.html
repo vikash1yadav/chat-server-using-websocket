@@ -3,19 +3,20 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WebSocket Chat</title>
   <link rel="stylesheet" href="styles.css">
-  <script src="https://cdn.tailwindcss.com"></script>
   <style>
      #bottomContainer {
     position: fixed;
     bottom: 0;
     width: 100%;
+    margin: 0 auto;
     background-color: #ffffff;
     padding: 10px;
     display: flex;
-    justify-content: space-between;
+    justify-content: center;
     align-items: center;
   }
     .message-container {
@@ -42,26 +43,42 @@
   </style>
 </head>
 <body class="font-sans bg-gray-100">
-
-  <div class="container mx-auto p-4">
+  <div class="container mx-auto p-4 ">
     <!-- Input field for setting the username -->
     <input type="text" id="usernameInput" class="border border-gray-300 p-2 rounded" placeholder="Enter your name...">
     <button id="usernameButton" onclick="setUsername()" class="bg-green-500 text-white p-2 rounded ml-2">Set Username</button>
   </div>
 
-  <div id="chat" class="container mx-auto my-8 p-4 bg-white rounded shadow-lg" style="display:none;">
+  <div
+  id="chat" class="container mx-auto my-8 p-4 bg-white rounded shadow-lg"
+  style="width: 95vw; height: 75vh; overflow-y: scroll; display: none; flex-direction: column; justify-content: flex-end; "
+  >
     <!-- Chat messages will be displayed here -->
+    <div 
+    class="message-container my-message bg-[#4caf50] justify-end ">
+      <p>1. Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
+
+    </div>
+
+    <div 
+    class="message-container my-message bg-[#4caf50] justify-end ">
+      <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
+
+    </div><div 
+    class="message-container my-message bg-[#4caf50] justify-end ">
+      <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
+
+    </div>
+    <div 
+    class="message-container my-message bg-[#4caf50] justify-end ">
+      <p>1. Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
+
+    </div>
+
   </div>
       <!-- Volume control seek bar -->
 <form onsubmit="sendMessage()">
-  <div id="bottomContainer" class="container mx-auto p-4 items-center" style="display:none;">
-    <!-- Microphone icon for mute/unmute -->
-    <!-- <img id="microphoneIcon" src="mute-icon.png" alt="Microphone" 
-    class="w-10" 
-    onclick="toggleMute()"
-      style="cursor: pointer; display: block;"> -->
-    <!-- <input type="range" id="volumeControl" min="0" max="1" step="0.1" value="1" onchange="changeVolume()"> -->
-
+  <div id="bottomContainer" class=" mx-auto p-4 items-center" style="display:none;">
     <input type="text" id="messageInput" class="border border-gray-300 p-2 rounded w-3/4"
       placeholder="Type your message...">
     <button onclick="" type="submit" class="bg-blue-500 text-white p-2 rounded ml-2">Send</button>
@@ -85,7 +102,7 @@
 
       // Display the chat interface and hide the username setting interface
       document.getElementById('usernameInput').style.display = 'none';
-      document.getElementById('chat').style.display = 'block';
+      document.getElementById('chat').style.display = 'flex';
       document.getElementById('messageInput').style.display = 'block';
       document.getElementById('bottomContainer').style.display = 'flex';
       document.getElementById('usernameButton').style.display = 'none';
@@ -137,70 +154,7 @@
       input.value = '';
     }
 
-    var audio 
-  // Voice call functionality (using WebRTC)
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then((stream) => {
-      audio = document.createElement('audio');
-      audio.srcObject = stream;
-      // audio.play();
-
-      mediaRecorder = new MediaRecorder(stream);
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          const reader = new FileReader();
-          reader.onloadend = () => {
-            const voiceData = reader.result;
-            socket.send(voiceData);
-          };
-          reader.readAsArrayBuffer(event.data);
-        }
-      };
-
-      // Start recording when the user starts speaking
-      // mediaRecorder.start();
-
-      // Stop recording when the user stops speaking
-      mediaRecorder.onstop = () => {
-        socket.send('Voice call ended.');
-      };
-    })
-    .catch((error) => {
-      console.error('Error accessing microphone:', error);
-    });
-
-    function toggleMute() {
-    //  audio = document.getElementById('audioElement'); // Adjust this based on your audio element
-    isMuted = !isMuted; // Toggle the mute state
-    console.log("{isMuted}",  isMuted ? 'mute-icon.png' : 'unmute-icon.png');
-    const microphoneIcon = document.getElementById('microphoneIcon');
-    microphoneIcon.src = isMuted ? 'mute-icon.png' : 'unmute-icon.png';
-    // Mute/unmute the audio
-    audio.muted = isMuted;
-    const volumeControl = document.getElementById('volumeControl');
-    volumeControl.value= isMuted ? 0 : 90;
-    // Update the microphone icon based on the mute stat
-
-    if (isMuted) {
-      audio.pause();
-            // Stop recording when the user stops speaking
-      //       mediaRecorder.onstop = () => {
-      //   socket.send('Voice call ended.');
-      // };
-    } else {
-      // Start recording when the user starts speaking
-      audio.play();
-    }
-
-  }
-    function changeVolume() {
-      const volumeControl = document.getElementById('volumeControl');
-      const volumeValue = volumeControl.value;
-
-      // Implement logic to change the volume based on the volumeValue
-      // For example, you can adjust the volume of an audio element if you have one.
-      audio.volume = volumeValue;
-    }
+    var audio;
   </script>
 </body>
 </html>
