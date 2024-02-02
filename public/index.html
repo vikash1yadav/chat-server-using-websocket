@@ -69,7 +69,12 @@
   </div>
 </form>
   <script>
-    const socket = new WebSocket('ws://chat-server-5cwf.onrender.com');
+    const socket = new WebSocket('wss://chat-server-5cwf.onrender.com');
+    // {
+    //   headers: {
+    //     "user-agent": "Mozilla"
+    //   }
+    // }
     // https://legendary-capybara-q67p6vr4p9gf4pq9-3000.app.github.dev/
     var username = '';
     let isMuted= true;
