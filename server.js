@@ -11,34 +11,63 @@ const clients = new Map();
 
 wss.on('connection', (ws) => {
   // Prompt the user to enter their name
-  ws.send('Please enter your name:');
+  // ws.send('Please enter your name:');
+  // const msg = JSON.parse(message);
+
+  ws.send(JSON.stringify({type: 'auth',
+  statusCode: 499,
+   data: {
+    message: 'Please enter your name:'
+  }}));
 
   // Event listener for incoming messages
   ws.on('message', (message) => {
+    const msg = JSON.parse(message);
     if (!clients.has(ws)) {
       // Set the entered name as the username
-
-      clients.set(ws, message);
-      broadcast(`${message} has joined the chat`);
-      return;
+      if (msg?.type=='auth') {
+        clients.set(ws, msg?.data?.username);
+        broadcast(ws, 
+          JSON.stringify({type:'notification', data:{message:`${msg?.data?.username} has joined the chat`}})
+          );
+        return; 
+      }
     }
     // Broadcast the message along with the username
-    broadcast(`${clients.get(ws)}: ${message}`);
+    if (msg?.type=='chat') {
+      broadcast(ws, 
+        JSON.stringify({
+          type: 'chat', data: {
+            message: `${clients.get(ws)}: ${msg?.data?.message}`,
+            username: clients.get(ws)
+          }
+        })
+        );      
+    }
+
+    if (msg.type === 'file') {
+      broadcast(ws, JSON.stringify({
+        type: 'file',
+        fileName: msg.fileName,
+        fileContent: msg.fileContent,
+      }))
+    }
+
   });
 
   // Event listener for closing connections
   ws.on('close', () => {
     const username = clients.get(ws) || 'Anonymous';
-    broadcast(`${username} has left the chat`);
+    broadcast(ws, `${username} has left the chat`);
     clients.delete(ws);
   });
 });
 
 // Function to broadcast a message to all connected clients
-function broadcast(message) {
+function broadcast(ws, message) {
 
   wss.clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
+    if (client !== ws && client.readyState === WebSocket.OPEN) {
       client.send(message);
     }
   });

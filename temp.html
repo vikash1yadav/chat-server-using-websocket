@@ -1,0 +1,71 @@
+<!-- Include necessary scripts for WebRTC -->
+<script src="https://webrtc.github.io/adapter/adapter-latest.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/webrtc/3.0.0/webrtc.js"></script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('form');
+    const input = document.getElementById('m');
+    const fileInput = document.getElementById('fileInput');
+    const messages = document.getElementById('messages');
+
+    const socket = new WebSocket('ws://localhost:3000');
+
+    socket.addEventListener('open', function (event) {
+      console.log('WebSocket connection opened:', event);
+    });
+
+    socket.addEventListener('message', function (event) {
+      const msg = JSON.parse(event.data);
+
+      if (msg.type === 'chat') {
+        // Handle regular chat message
+        messages.innerHTML += '<li>' + msg.message + '</li>';
+      } else if (msg.type === 'file') {
+        // Handle file shared event
+        const link = document.createElement('a');
+        link.href = 'data:application/octet-stream;base64,' + msg.fileContent;
+        link.download = msg.fileName;
+        link.innerText = msg.fileName;
+        messages.appendChild(link);
+      }
+    });
+
+    form.addEventListener('submit', function(event) {
+      event.preventDefault();
+
+      if (input.value.trim() !== '') {
+        socket.send(JSON.stringify({ type: 'chat', message: input.value }));
+        input.value = '';
+      }
+    });
+
+    fileInput.addEventListener('change', function() {
+      const file = fileInput.files[0];
+
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          const fileContent = e.target.result.split(',')[1];
+
+          // Send the file content to the server
+          socket.send(JSON.stringify({ type: 'file', fileName: file.name, fileContent }));
+        };
+        reader.readAsDataURL(file);
+      }
+    });
+
+    // WebRTC functions
+    function handleOffer(offer) {
+      // ... (Same as before)
+    }
+
+    function handleAnswer(answer) {
+      // ... (Same as before)
+    }
+
+    function handleICECandidate(candidate) {
+      // ... (Same as before)
+    }
+  });
+</script>

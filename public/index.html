@@ -1,6 +1,7 @@
 <!-- public/index.html -->
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -8,17 +9,18 @@
   <title>WebSocket Chat</title>
   <link rel="stylesheet" href="styles.css">
   <style>
-     #bottomContainer {
-    position: fixed;
-    bottom: 0;
-    width: 100%;
-    margin: 0 auto;
-    background-color: #ffffff;
-    padding: 10px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-  }
+    #bottomContainer {
+      position: fixed;
+      bottom: 0;
+      width: 100%;
+      margin: 0 auto;
+      background-color: #ffffff;
+      padding: 10px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
     .message-container {
       display: flex;
       /* justify-content: space-between; */
@@ -42,60 +44,72 @@
     }
   </style>
 </head>
+
 <body class="font-sans bg-gray-100">
+  
   <div class="container mx-auto p-4 ">
     <!-- Input field for setting the username -->
     <input type="text" id="usernameInput" class="border border-gray-300 p-2 rounded" placeholder="Enter your name...">
-    <button id="usernameButton" onclick="setUsername()" class="bg-green-500 text-white p-2 rounded ml-2">Set Username</button>
+    <button id="usernameButton" onclick="setUsername()" class="bg-green-500 text-white p-2 rounded ml-2">Set
+      Username</button>
   </div>
 
-  <div
-  id="chat" class="container mx-auto my-8 p-4 bg-white rounded shadow-lg"
-  style="width: 95vw; height: 75vh; overflow-y: scroll; display: none; flex-direction: column; justify-content: flex-end; "
-  >
+  <div id="chat" class="flex-1 container mx-auto my-8 p-4 bg-white rounded shadow-lg"
+    style="width: 95vw; min-height: 75vh; overflow-y: scroll; display: none; flex-direction: column; justify-content: flex-end; ">
     <!-- Chat messages will be displayed here -->
-    <div 
-    class="message-container my-message bg-[#4caf50] justify-end ">
+    <div class="message-container my-message bg-[#4caf50] justify-end ">
       <p>1. Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
 
     </div>
 
-    <div 
-    class="message-container my-message bg-[#4caf50] justify-end ">
-      <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
-
-    </div><div 
-    class="message-container my-message bg-[#4caf50] justify-end ">
+    <div class="message-container my-message bg-[#4caf50] justify-end ">
       <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
 
     </div>
-    <div 
-    class="message-container my-message bg-[#4caf50] justify-end ">
+    <div class="message-container my-message bg-[#4caf50] justify-end ">
+      <p>Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
+
+    </div>
+    <div class="message-container my-message bg-[#4caf50] justify-end ">
       <p>1. Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
 
     </div>
 
   </div>
-      <!-- Volume control seek bar -->
-<form onsubmit="sendMessage()">
-  <div id="bottomContainer" class=" mx-auto p-4 items-center" style="display:none;">
-    <input type="text" id="messageInput" class="border border-gray-300 p-2 rounded w-3/4"
-      placeholder="Type your message...">
-    <button onclick="" type="submit" class="bg-blue-500 text-white p-2 rounded ml-2">Send</button>
+  <!-- Volume control seek bar -->
+  <form onsubmit="sendMessage()">
+    <div id="bottomContainer" class=" mx-auto p-4 items-center" style="display:none;">
+      <input id="fileInput" type="file">
+      <input type="text" id="messageInput" class="border border-gray-300 p-2 rounded w-3/4"
+        placeholder="Type your message...">
+      <button onclick="" type="submit" class="bg-blue-500 text-white p-2 rounded ml-2">Send</button>
 
-  </div>
-</form>
+    </div>
+  </form>
   <script>
-    const socket = new WebSocket('wss://chat-server-5cwf.onrender.com');
+    //  document.addEventListener('DOMContentLoaded', function() {
+    // const sockerServerUrl= 'wss://chat-server-5cwf.onrender.com';
+    const sockerServerUrl = 'ws://localhost:3000';
+    const socket = new WebSocket(sockerServerUrl);
+
     // {
     //   headers: {
     //     "user-agent": "Mozilla"
     //   }
     // }
     // https://legendary-capybara-q67p6vr4p9gf4pq9-3000.app.github.dev/
-    var username = '';
-    let isMuted= true;
+    var username = localStorage.getItem("username") || '';
+    let isMuted = true;
     let mediaRecorder;
+    if (username) {
+      // Display the chat interface and hide the username setting interface
+      document.getElementById('usernameInput').style.display = 'none';
+      document.getElementById('chat').style.display = 'flex';
+      document.getElementById('messageInput').style.display = 'block';
+      document.getElementById('bottomContainer').style.display = 'flex';
+      document.getElementById('usernameButton').style.display = 'none';
+
+    }
     function setUsername() {
       const usernameInput = document.getElementById('usernameInput');
       username = usernameInput.value;
@@ -107,10 +121,17 @@
       document.getElementById('bottomContainer').style.display = 'flex';
       document.getElementById('usernameButton').style.display = 'none';
 
-    //   usernameButton
+      //   usernameButton
 
       // Send the username to the server
-      socket.send(username);
+      socket.send(
+        JSON.stringify({
+          type: 'auth', data: {
+            username
+          }
+        })
+      );
+      localStorage.setItem("username", username)
 
       // Focus on the message input field
       document.getElementById('messageInput').focus();
@@ -118,43 +139,147 @@
 
     socket.onmessage = (event) => {
       const chatDiv = document.getElementById('chat');
-
+      console.log("hit");
       if (!username) {
         // If the server sends a message before the username is set, display it in the username setting interface
-        document.getElementById('usernameInput').value += event.data;
-      } 
+        // document.getElementById('usernameInput').value += event.data;
+        const msg = JSON.parse(event.data);
+        if (msg?.type === 'auth' && msg?.statusCode === 499) {
+          document.getElementById('usernameInput').style.display = 'block';
+          document.getElementById('usernameButton').style.display = 'block';
+        }
+      }
       else {
+        const msg = JSON.parse(event.data);
+        if (msg?.type === 'auth' && msg?.statusCode === 499) {
+          socket.send(
+            JSON.stringify({
+              type: 'auth', data: {
+                username
+              }
+            })
+          );
+          console.log("usr name send");
+          return
+        }
+        console.log("mmm", msg);
         // Display chat messages with usernames
         // chatDiv.innerHTML += `<p>${event.data}</p>`;
         const messageContainer = document.createElement('div');
         messageContainer.classList.add('message-container');
 
-        const message = document.createElement('p');
-        message.textContent = event.data;
-        if (event.data.startsWith(username + ':')) {
-        // const messageContainer = document.createElement('div');
-        messageContainer.classList.add('justify-end');
-        message.classList.add('my-message');
-        message.classList.add('w-max');
-        } else {
-          messageContainer.classList.add('other-user-message', 'w-max');
+        if (msg.type === 'file') {
+          // Handle file shared event
+          const mediaType= getMediaType(msg.fileName)
+          const imgEle = document.createElement('img');
+          const link = document.createElement('a');
+          link.href = 'data:application/octet-stream;base64,' + msg.fileContent;
+          link.download = msg.fileName;
+          if (mediaType.includes("image") ||mediaType.includes("video") ) {
+          imgEle.src = link.href;
+          imgEle.style.width= "200px";
+          imgEle.style.objectFit= "contain"
+          link.innerHTML =mediaType.includes("image") ? `<img src=${link.href} style="max-height:50vh;" />`: `<video src=${`data:video/mp4;base64,${msg.fileContent}`} controls preload="auto" style="max-height:50vh;" />`;
+          messageContainer.appendChild(link);
+          // chatDiv.appendChild(messageContainer);
+          }else{
+            link.innerText = msg.fileName;
+          messageContainer.appendChild(link);
+          }
         }
+        const message = document.createElement('p');
+        message.textContent = ['notification', 'chat'].includes(msg?.type) ? msg?.data?.message : "";
+        messageContainer.classList.add('other-user-message', 'w-max');
         messageContainer.appendChild(message);
         chatDiv.appendChild(messageContainer);
       }
     };
 
     function sendMessage(e) {
-        event.preventDefault()
+      event.preventDefault()
       const input = document.getElementById('messageInput');
       const message = input.value;
+      const fileInput = document.getElementById('fileInput');
+
+      const file = fileInput?.files[0];
+      console.log("Send the file content to the server", e, fileInput, file);
 
       // Send the message along with the username
-      socket.send(message);
+      const messageContainer = document.createElement('div');
+      const chatDiv = document.getElementById('chat');
+      messageContainer.classList.add('message-container');
+      const messageEle = document.createElement('p');
+      messageContainer.classList.add('justify-end');
+      messageEle.classList.add('my-message');
+      messageEle.classList.add('w-max');
+      if (message) {
+      socket.send(JSON.stringify({ type: 'chat', data: { message } }));
+      messageEle.textContent = message;
+      messageContainer.appendChild(messageEle);
+      chatDiv.appendChild(messageContainer); 
+      }
+      if (file) {
+        console.log("Send the file content to the server", file);
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          const fileContent = e.target.result.split(',')[1];
+          console.log("Send the file content to the server");
+          // Send the file content to the server
+          socket.send(JSON.stringify({ type: 'file', fileName: file.name, fileContent }));
+          const mediaType= getMediaType(file.name)
+          const link = document.createElement('a');
+          link.href = 'data:application/octet-stream;base64,' + fileContent;
+          link.download = file.name;
+          link.classList.add('my-message');
+          link.classList.add('w-max');
+          link.innerHTML =mediaType.includes("image") ? `<img src=${link.href} style="max-height:50vh;" />`: `<video src=${`data:video/mp4;base64,${fileContent}`} controls preload="auto" style="max-height:50vh;" />`;
+          messageContainer.appendChild(link);
+          chatDiv.appendChild(messageContainer);
+        };
+        reader.readAsDataURL(file);
+      }
+
       input.value = '';
     }
 
-    var audio;
+    function getMediaType(file) {
+      const mediaTypes = {
+        'jpg': 'image/jpeg',
+        'jpeg': 'image/jpeg',
+        'png': 'image/png',
+        'gif': 'image/gif',
+        'bmp': 'image/bmp',
+        'svg': 'image/svg+xml',
+        'mp4': 'video/mp4',
+        'webm': 'video/webm',
+        'ogg': 'video/ogg',
+        'mp3': 'audio/mp3',
+        'wav': 'audio/wav',
+        'pdf': 'application/pdf',
+        'doc': 'application/msword',
+        'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'xls': 'application/vnd.ms-excel',
+        'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        'ppt': 'application/vnd.ms-powerpoint',
+        'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+      };
+
+      if (typeof file === 'string') {
+        // Extract file extension from the file name
+        const extension = file.split('.').pop().toLowerCase();
+        return mediaTypes[extension] || 'Unknown';
+      } else if (file instanceof File) {
+        // Extract file extension from the file object
+        const extension = file.name.split('.').pop().toLowerCase();
+        return mediaTypes[extension] || 'Unknown';
+      } else {
+        return 'Invalid input';
+      }
+    }
+
+
+    // })
   </script>
 </body>
+
 </html>
