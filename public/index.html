@@ -235,10 +235,13 @@
           link.innerHTML =mediaType.includes("image") ? `<img src=${link.href} style="max-height:50vh;" />`: `<video src=${`data:video/mp4;base64,${fileContent}`} controls preload="auto" style="max-height:50vh;" />`;
           messageContainer.appendChild(link);
           chatDiv.appendChild(messageContainer);
+          fileInput.value= null;
         };
         reader.readAsDataURL(file);
       }
-
+      // window.scrollTo({ left: 0, top: (document.body.clientHeight+ window.screen.height)*1000,  });
+      window.scrollTo(0, document.body.scrollHeight+ window.screen.height);
+      console.log("chatDiv.scrollHeight",document.body.scrollHeight* window.screen.height);
       input.value = '';
     }
 
