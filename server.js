@@ -30,7 +30,14 @@ wss.on('connection', (ws) => {
       if (msg?.type == 'auth') {
         clients.set(ws, msg?.data?.username);
         broadcast(ws,
-          JSON.stringify({ type: 'notification', data: { message: `${msg?.data?.username} has joined the chat` } })
+          JSON.stringify({
+            type: 'notification',
+            notifyType: "user-joined",
+            data: {
+              message: `${msg?.data?.username} has joined the chat`,
+              username: msg?.data?.username
+            }
+          })
         );
         return;
       }
@@ -77,7 +84,17 @@ wss.on('connection', (ws) => {
   // Event listener for closing connections
   ws.on('close', () => {
     const username = clients.get(ws) || 'Anonymous';
-    broadcast(ws, `${username} has left the chat`);
+    broadcast(ws,
+      JSON.stringify({
+        type: 'notification',
+        notifyType: "user-left",
+        data: {
+          message: `${username}  has left the chat`,
+          username: username
+        }
+      })
+      // `${username} has left the chat`
+    );
     clients.delete(ws);
   });
 });

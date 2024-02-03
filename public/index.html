@@ -8,6 +8,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>WebSocket Chat</title>
   <link rel="stylesheet" href="styles.css">
+  <script src="https://cdn.tailwindcss.com"></script>
   <style>
     #bottomContainer {
       position: fixed;
@@ -48,10 +49,11 @@
       height: 9vh !important;
       position: fixed;
       top: 1;
-      padding: 20px;
+      padding: 10px;
       background-color: #ffff;
       /* background-color: #ffe749; */
       color: #ffe749;
+      z-index: 100;
     }
 
     .alert {
@@ -77,12 +79,17 @@
     .closebtn:hover {
       color: black;
     }
+
+    .active-list-item {
+      padding: 1px 2px !important;
+      background-color: #4caf50;
+    }
   </style>
 </head>
 
-<body class="font-sans bg-gray-100 ">
-  <div class="active-user-list">
-
+<body class="font-sans">
+  <div id="user-active-list" class="fixed right-0 z-30 w-[100vw] p-2 flex flex-wrap gap-1 justify-center"
+    style="width: 100%; background-color: #ffe749; flex-wrap: wrap; justify-content: center;">
   </div>
 
   <div id="notifyClient" class="alert">
@@ -115,8 +122,8 @@
   </form>
   <script>
     //  document.addEventListener('DOMContentLoaded', function() {
-    const sockerServerUrl = 'wss://chat-server-5cwf.onrender.com';
-    // const sockerServerUrl = 'ws://localhost:3000';
+    // const sockerServerUrl = 'wss://chat-server-5cwf.onrender.com';
+    const sockerServerUrl = 'ws://localhost:3000';
     let socket; //= new WebSocket(sockerServerUrl);
     // https://legendary-capybara-q67p6vr4p9gf4pq9-3000.app.github.dev/
     var username = localStorage.getItem("username") || '';
@@ -124,6 +131,7 @@
     let mediaRecorder;
     // Object to store file chunks temporarily
     const fileChunks = {};
+    let activeUserList = [];
     const chatDiv = document.getElementById('chat');
 
     if (username) {
@@ -250,6 +258,7 @@
         }
         else {
           const msg = JSON.parse(event.data);
+          console.log("mmm", msg);
           if (msg?.type === 'auth' && msg?.statusCode === 499) {
             socket.send(
               JSON.stringify({
@@ -288,6 +297,20 @@
           else if (msg.type === 'fileChunk') {
             // Handle file chunk received
             handleFileChunk(msg);
+          }
+          else if (['notification'].includes(msg?.type) && ['user-left', 'user-joined'].includes(msg?.notifyType)) {
+            const activerUserEle = document.getElementById("user-active-list");
+            const { data } = msg;
+            if (msg?.notifyType == 'user-joined') {
+              activeUserList = [...activeUserList, { username: data?.username }];
+              activerUserEle.innerHTML = `${activeUserList.map((item) => `<div class="px-2 m-1 bg-green-500 text-white rounded shadow-lg" style="padding: 0 3px; margin: 2px;">${item.username}</div>`)}`;
+              console.log("it12", `${activeUserList.map((item) => `<div class="px-1 m-1">${item.username}</div>`)}`, msg);
+
+            } else if (msg?.notifyType == 'user-left') {
+              activeUserList = activeUserList.filter((item) => item.username != data?.username);
+              activerUserEle.innerHTML = `${activeUserList.map((item) => `<div class="px-2 m-1 bg-green-500 text-white rounded shadow-lg" style="padding: 0 3px; margin: 2px;">${item.username}</div>`)}`;
+            }
+
           }
           else if (['notification', 'chat'].includes(msg?.type)) {
             const message = document.createElement('p');
