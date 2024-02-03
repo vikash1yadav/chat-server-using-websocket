@@ -43,7 +43,21 @@
       text-align: right;
     }
 
+    .active-user-list {
+      width: 100%;
+      height: 9vh !important;
+      position: fixed;
+      top: 1;
+      padding: 20px;
+      background-color: #ffff;
+      /* background-color: #ffe749; */
+      color: #ffe749;
+    }
+
     .alert {
+      width: 100%;
+      position: fixed;
+      top: 0;
       padding: 20px;
       background-color: #f44336;
       color: white;
@@ -67,7 +81,7 @@
 </head>
 
 <body class="font-sans bg-gray-100 ">
-  <div class="w-full ">
+  <div class="active-user-list">
 
   </div>
 
@@ -82,12 +96,11 @@
       Username</button>
   </div>
 
-  <div id="chat" class="flex-1 container mx-auto my-20 p-4 bg-white rounded shadow-lg"
+  <div id="chat" class="flex-1 container mx-auto my-20 p-4 rounded shadow-lg"
     style="width: 95vw; min-height: 75vh; overflow-y: scroll; display: none; flex-direction: column; justify-content: flex-end; margin-top: 10vh;">
     <!-- Chat messages will be displayed here -->
     <div class="message-container my-message bg-[#4caf50] justify-end ">
       <p>1. Lorem ipsum dolor sit amet consectetur adipisicing elit. Aliquam,</p>
-
     </div>
   </div>
   <!-- Volume control seek bar -->
@@ -102,13 +115,17 @@
   </form>
   <script>
     //  document.addEventListener('DOMContentLoaded', function() {
-    const sockerServerUrl = 'wss://chat-server-5cwf.onrender.com';
-    // const sockerServerUrl = 'ws://localhost:3000';
+    // const sockerServerUrl = 'wss://chat-server-5cwf.onrender.com';
+    const sockerServerUrl = 'ws://localhost:3000';
     let socket; //= new WebSocket(sockerServerUrl);
     // https://legendary-capybara-q67p6vr4p9gf4pq9-3000.app.github.dev/
     var username = localStorage.getItem("username") || '';
     let isMuted = true;
     let mediaRecorder;
+    // Object to store file chunks temporarily
+    const fileChunks = {};
+    const chatDiv = document.getElementById('chat');
+
     if (username) {
       // Display the chat interface and hide the username setting interface
       document.getElementById('usernameInput').style.display = 'none';
@@ -147,14 +164,12 @@
 
     function sendMessage(e) {
       event.preventDefault()
-      console.log("soc", socket);
 
       const input = document.getElementById('messageInput');
       const message = input.value;
       const fileInput = document.getElementById('fileInput');
 
       const file = fileInput?.files[0];
-      console.log("Send the file content to the server", e, fileInput, file);
 
       // Send the message along with the username
       const messageContainer = document.createElement('div');
@@ -171,11 +186,9 @@
         chatDiv.appendChild(messageContainer);
       }
       if (file) {
-        console.log("Send the file content to the server", file);
         const reader = new FileReader();
         reader.onload = function (e) {
           const fileContent = e.target.result.split(',')[1];
-          console.log("Send the file content to the server");
           // Send the file content to the server
           socket.send(JSON.stringify({ type: 'file', fileName: file.name, fileContent }));
           const mediaType = getMediaType(file.name)
@@ -184,15 +197,14 @@
           link.download = file.name;
           link.classList.add('my-message');
           link.classList.add('w-max');
-          link.innerHTML = mediaType.includes("image") ? `<img src=${link.href} style="max-height:50vh;" />` : `<video src=${`data:video/mp4;base64,${fileContent}`} controls preload="auto" style="max-height:50vh;" />`;
+          link.innerHTML = mediaType.includes("image") ? `<img src=${link.href} style="max-height:50vh;" />` :
+            mediaType.includes("video") ? `<video src=${`data:video/mp4;base64,${fileContent}`} controls preload="auto" style="max-height:50vh;" />` : file.name;
           messageContainer.appendChild(link);
           chatDiv.appendChild(messageContainer);
           fileInput.value = null;
         };
         reader.readAsDataURL(file);
       }
-      // window.scrollTo({ left: 0, top: (document.body.clientHeight+ window.screen.height)*1000,  });
-
       input.value = '';
       scrollToBottom();
     }
@@ -225,8 +237,8 @@
         setTimeout(reconnect, 2000);
       });
       socket.onmessage = (event) => {
-        const chatDiv = document.getElementById('chat');
-        console.log("hit");
+        // const chatDiv = document.getElementById('chat');
+        // console.log("hit socket.onmessage");
         if (!username) {
           // If the server sends a message before the username is set, display it in the username setting interface
           // document.getElementById('usernameInput').value += event.data;
@@ -249,9 +261,7 @@
             console.log("usr name send");
             return
           }
-          console.log("mmm", msg);
           // Display chat messages with usernames
-          // chatDiv.innerHTML += `<p>${event.data}</p>`;
           const messageContainer = document.createElement('div');
           messageContainer.classList.add('message-container');
 
@@ -268,23 +278,28 @@
               imgEle.style.objectFit = "contain"
               link.innerHTML = mediaType.includes("image") ? `<img src=${link.href} style="max-height:50vh;" />` : `<video src=${`data:video/mp4;base64,${msg.fileContent}`} controls preload="auto" style="max-height:50vh;" />`;
               messageContainer.appendChild(link);
-              // chatDiv.appendChild(messageContainer);
+              chatDiv.appendChild(messageContainer);
             } else {
               link.innerText = msg.fileName;
               messageContainer.appendChild(link);
+              chatDiv.appendChild(messageContainer);
             }
           }
-          const message = document.createElement('p');
-          message.textContent = ['notification', 'chat'].includes(msg?.type) ? msg?.data?.message : "";
-          messageContainer.classList.add('other-user-message', 'w-max');
-          messageContainer.appendChild(message);
-          chatDiv.appendChild(messageContainer);
-      scrollToBottom();
-
+          else if (msg.type === 'fileChunk') {
+            // Handle file chunk received
+            handleFileChunk(msg);
+          }
+          else if (['notification', 'chat'].includes(msg?.type)) {
+            const message = document.createElement('p');
+            message.textContent = ['notification', 'chat'].includes(msg?.type) ? msg?.data?.message : "";
+            messageContainer.classList.add('other-user-message', 'w-max');
+            messageContainer.appendChild(message);
+            chatDiv.appendChild(messageContainer);
+            scrollToBottom();
+          }
+          // chatDiv.appendChild(messageContainer);
         }
       };
-
-
     }
 
     initWebSocket();
@@ -294,11 +309,94 @@
 
     function scrollToBottom() {
       setTimeout(() => {
-        const scrollObj= { top: document.body.scrollHeight, behavior: 'smooth' }
+        const scrollObj = { top: document.body.scrollHeight + 100, behavior: 'smooth' }
         window.scrollTo(scrollObj);
-        console.log("chatDiv.scrollHeight", document.body.scrollHeight ,window.screen.height);
-
       }, 100)
+    }
+
+    // Function to handle file chunk received
+    function handleFileChunk(msg) {
+      const { fileName, chunkIndex, totalChunks, chunk } = msg;
+      const mediaType = getMediaType(fileName)
+
+      if (!fileChunks[fileName]) {
+        fileChunks[fileName] = [];
+        const messageContainer = document.createElement('div');
+        messageContainer.classList.add('message-container');
+        const divEle = document.createElement('div');
+        // mediaType.includes("video") ? 'video' :
+        divEle.id = fileName;
+        divEle.innerText = "Loading......."
+        divEle.classList.add('other-user-message', 'w-max');
+        messageContainer.appendChild(divEle);
+        chatDiv.appendChild(messageContainer);
+        scrollToBottom();
+      }
+      const percentage = Math.round((fileChunks[fileName].filter(Boolean).length / totalChunks) * 100);
+
+      fileChunks[fileName][chunkIndex] = chunk;
+      const isDownloadCompleted = fileChunks[fileName].filter(Boolean).length === totalChunks;
+      const isVideoSrc = mediaType.includes("video") && ((percentage <= 30 && percentage >= 25) ||
+        (percentage <= 50 && percentage >= 45) || (percentage <= 75 && percentage >= 65) || isDownloadCompleted);
+      // setTimeout(displayImageProgressively(fileChunks[fileName].join(''), fileName, mediaType), 5)
+      const fileContent = fileChunks[fileName].join('');
+      if (isVideoSrc) {
+        displayImageProgressively({ fileContent, fileName, mediaType, isDownloadCompleted })
+      } else if (mediaType.includes("image")) {
+        displayImageProgressively({ fileContent, fileName, mediaType, isDownloadCompleted })
+      }
+      // Check if all chunks are received
+      else if (fileChunks[fileName].filter(Boolean).length === totalChunks) {
+        // Reset chunks for this file
+        delete fileChunks[fileName];
+        displayImageProgressively({ fileContent, fileName, mediaType, isDownloadCompleted })
+        // Handle the complete file content
+        console.log("percentage", fileChunks);
+      }
+    }
+
+    // Function to display the image content progressively
+    function displayImageProgressively({ fileContent, fileName, mediaType, isDownloadCompleted }) {
+      const blob = new Blob([fileContent], { type: mediaType }); // Adjust the MIME type accordingly
+      const mediaUrl = `data:${mediaType};base64,` + fileContent;
+      const videoBlobUrl = URL.createObjectURL(blob);
+      // Create an image element and set its source URL.createObjectURL(blob);
+
+      // Display the image in the messages area
+      const link = document.createElement('a');
+      const messageContainer = document.createElement('div');
+      messageContainer.classList.add('message-container');
+      link.href = 'data:application/octet-stream;base64,' + fileContent;
+      link.download = fileName;
+
+      if (mediaType.includes("video")) {
+        const innerHtmlContent = `<video controls src=${mediaUrl} style="max-height:50vh;" />`;
+        if (isDownloadCompleted) {
+          // link.innerHTML = innerHtmlContent;
+          document.getElementById(fileName).innerHTML = innerHtmlContent;
+          // document.getElementById(fileName).appendChild(link);
+        } else {
+          const videoEle = document.getElementById(fileName);
+          document.getElementById(fileName).innerHTML = innerHtmlContent;
+        }
+      } else if (mediaType.includes("image")) {
+        const innerHtmlContent = `<img src=${mediaUrl} style="max-height:50vh;" />`;
+        if (isDownloadCompleted) {
+          // link.innerHTML = innerHtmlContent;
+          // document.getElementById(fileName).innerHTML= "";
+          document.getElementById(fileName).appendChild(link);
+        } else {
+          document.getElementById(fileName).innerHTML = innerHtmlContent;
+        }
+      }
+      else if (isDownloadCompleted) {
+        link.innerText = fileName;
+        // messageContainer.appendChild(link);
+        // chatDiv.appendChild(messageContainer);
+        document.getElementById(fileName).innerHTML = "";
+        document.getElementById(fileName).appendChild(link)
+      }
+      // messages.appendChild(image);
     }
 
     function getMediaType(file) {
@@ -336,8 +434,7 @@
       }
     }
     // })
-    document.getElementById('chat').style.marginBottom= `${document.getElementById('bottomContainer').clientHeight+5}px`;
-    console.log("soc", `${document.getElementById('bottomContainer').clientHeight+10}px`);
+    document.getElementById('chat').style.marginBottom = `${document.getElementById('bottomContainer').clientHeight + 5}px`;
   </script>
 </body>
 

@@ -14,43 +14,62 @@ wss.on('connection', (ws) => {
   // ws.send('Please enter your name:');
   // const msg = JSON.parse(message);
 
-  ws.send(JSON.stringify({type: 'auth',
-  statusCode: 499,
-   data: {
-    message: 'Please enter your name:'
-  }}));
+  ws.send(JSON.stringify({
+    type: 'auth',
+    statusCode: 499,
+    data: {
+      message: 'Please enter your name:'
+    }
+  }));
 
   // Event listener for incoming messages
   ws.on('message', (message) => {
     const msg = JSON.parse(message);
     if (!clients.has(ws)) {
       // Set the entered name as the username
-      if (msg?.type=='auth') {
+      if (msg?.type == 'auth') {
         clients.set(ws, msg?.data?.username);
-        broadcast(ws, 
-          JSON.stringify({type:'notification', data:{message:`${msg?.data?.username} has joined the chat`}})
-          );
-        return; 
+        broadcast(ws,
+          JSON.stringify({ type: 'notification', data: { message: `${msg?.data?.username} has joined the chat` } })
+        );
+        return;
       }
     }
     // Broadcast the message along with the username
-    if (msg?.type=='chat') {
-      broadcast(ws, 
+    if (msg?.type == 'chat') {
+      broadcast(ws,
         JSON.stringify({
           type: 'chat', data: {
             message: `${clients.get(ws)}: ${msg?.data?.message}`,
             username: clients.get(ws)
           }
         })
-        );      
+      );
     }
 
     if (msg.type === 'file') {
-      broadcast(ws, JSON.stringify({
-        type: 'file',
-        fileName: msg.fileName,
-        fileContent: msg.fileContent,
-      }))
+      const { fileName, fileContent } = msg;
+
+      // Split the file content into chunks (e.g., 64 KB chunks)
+      const chunkSize = 64 * 1024;
+      const chunks = [];
+
+      for (let i = 0; i < fileContent.length; i += chunkSize) {
+        chunks.push(fileContent.slice(i, i + chunkSize));
+      }
+
+      // Send each chunk individually
+      chunks.forEach((chunk, index) => {
+        // setTimeout(() => {}, index * 20); // Add a small delay between chunks for demonstration purposes
+        broadcast(ws, JSON.stringify({
+          type: 'fileChunk',
+          fileName,
+          chunkIndex: index,
+          totalChunks: chunks.length,
+          chunk,
+        }))
+      });
+
     }
 
   });
